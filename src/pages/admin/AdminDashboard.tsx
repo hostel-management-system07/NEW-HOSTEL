@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layouts/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +33,34 @@ import ChatBot from "../../components/ChatBot";
 // Define color constants
 const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe"];
 
+// Define proper interfaces for Firestore documents
+interface RoomData {
+  id: string;
+  status: string;
+  number?: string;
+  floor?: string;
+  type?: string;
+  capacity?: number;
+}
+
+interface FeeData {
+  id: string;
+  amount: number;
+  status: string;
+  dueDate?: string;
+  userId?: string;
+}
+
+interface ComplaintData {
+  id: string;
+  status: string;
+  priority: string;
+  issue?: string;
+  userId?: string;
+  roomId?: string;
+  createdAt?: string;
+}
+
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -60,10 +87,10 @@ const AdminDashboard = () => {
 
         // Fetch rooms
         const roomsSnapshot = await getDocs(collection(db, "rooms"));
-        const rooms = roomsSnapshot.docs.map(doc => ({
+        const rooms: RoomData[] = roomsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        } as RoomData));
         
         const totalRooms = rooms.length;
         const occupiedRooms = rooms.filter(room => room.status === "occupied").length;
@@ -71,10 +98,10 @@ const AdminDashboard = () => {
 
         // Fetch fees
         const feesSnapshot = await getDocs(collection(db, "fees"));
-        const fees = feesSnapshot.docs.map(doc => ({
+        const fees: FeeData[] = feesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        } as FeeData));
         
         const totalFees = fees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
         const paidFees = fees
@@ -84,10 +111,10 @@ const AdminDashboard = () => {
 
         // Fetch complaints
         const complaintsSnapshot = await getDocs(collection(db, "complaints"));
-        const complaints = complaintsSnapshot.docs.map(doc => ({
+        const complaints: ComplaintData[] = complaintsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        } as ComplaintData));
         
         const totalComplaints = complaints.length;
         const resolvedComplaints = complaints.filter(complaint => complaint.status === "resolved").length;

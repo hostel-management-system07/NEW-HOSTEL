@@ -20,7 +20,11 @@ import {
 import { auth, db } from "../lib/firebase";
 import { toast } from "sonner";
 
-export interface AuthUser extends User {
+// Fix: Create AuthUser interface without extending User
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
   role?: string;
   bloodGroup?: string;
   age?: number;
@@ -116,6 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...data
       });
       
+      // If we need to update the display name in Firebase Auth
+      if (data.displayName && auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: data.displayName });
+      }
+      
       // Update local state
       setCurrentUser(prev => prev ? { ...prev, ...data } : null);
       
@@ -130,9 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Change password
   const changePassword = async (newPassword: string) => {
     try {
-      if (!currentUser) throw new Error("No user logged in");
+      if (!auth.currentUser) throw new Error("No user logged in");
       
-      await updatePassword(currentUser, newPassword);
+      await updatePassword(auth.currentUser, newPassword);
       toast.success("Password changed successfully!");
     } catch (error: any) {
       console.error("Password change error:", error);
@@ -144,13 +153,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Delete account
   const deleteAccount = async () => {
     try {
-      if (!currentUser) throw new Error("No user logged in");
+      if (!currentUser || !auth.currentUser) throw new Error("No user logged in");
       
       // Delete user document from Firestore
       await deleteDoc(doc(db, "users", currentUser.uid));
       
       // Delete Firebase auth user
-      await deleteFirebaseUser(currentUser);
+      await deleteFirebaseUser(auth.currentUser);
       
       toast.success("Account deleted successfully!");
     } catch (error: any) {
@@ -168,13 +177,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const docSnap = await getDoc(doc(db, "users", user.uid));
           if (docSnap.exists()) {
             const userData = docSnap.data();
-            setCurrentUser({ ...user, ...userData } as AuthUser);
+            // Map Firebase user to our AuthUser
+            const authUser: AuthUser = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              ...userData
+            };
+            setCurrentUser(authUser);
           } else {
-            setCurrentUser(user as AuthUser);
+            // If no additional data, just use basic info
+            setCurrentUser({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName
+            });
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
-          setCurrentUser(user as AuthUser);
+          setCurrentUser({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName
+          });
         }
       } else {
         setCurrentUser(null);

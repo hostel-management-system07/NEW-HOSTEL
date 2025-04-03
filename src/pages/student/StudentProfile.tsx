@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import StudentLayout from "../../components/layouts/StudentLayout";
@@ -19,12 +18,11 @@ const StudentProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // User profile data
   const [userData, setUserData] = useState({
     name: currentUser?.displayName || "",
     email: currentUser?.email || "",
     phone: currentUser?.phoneNumber || "",
-    age: currentUser?.age || "",
+    age: currentUser?.age?.toString() || "",
     bloodGroup: currentUser?.bloodGroup || "",
     gender: currentUser?.gender || "",
     address: currentUser?.address || "",
@@ -38,7 +36,7 @@ const StudentProfile = () => {
         name: currentUser.displayName || "",
         email: currentUser.email || "",
         phone: currentUser.phoneNumber || "",
-        age: currentUser.age || "",
+        age: currentUser.age?.toString() || "",
         bloodGroup: currentUser.bloodGroup || "",
         gender: currentUser.gender || "",
         address: currentUser.address || "",
@@ -64,7 +62,7 @@ const StudentProfile = () => {
       await updateUserProfile({
         displayName: userData.name,
         phoneNumber: userData.phone,
-        age: userData.age,
+        age: userData.age ? parseInt(userData.age, 10) : undefined,
         bloodGroup: userData.bloodGroup,
         gender: userData.gender,
         address: userData.address,
@@ -93,7 +91,6 @@ const StudentProfile = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Profile Summary Card */}
           <Card>
             <CardHeader className="p-6">
               <div className="flex flex-col items-center space-y-4">
@@ -132,7 +129,6 @@ const StudentProfile = () => {
             </CardContent>
           </Card>
 
-          {/* Profile Details Card */}
           <Card className="md:col-span-2">
             <CardHeader>
               <div className="flex justify-between items-center">
