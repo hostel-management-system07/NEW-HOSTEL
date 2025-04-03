@@ -127,6 +127,33 @@ const AdminComplaints = () => {
     setFilteredComplaints(filtered);
   }, [complaints, searchTerm, statusFilter, priorityFilter]);
 
+  // Helper function to safely format date
+  const formatDate = (timestamp: any): string => {
+    if (!timestamp) return "Unknown date";
+    
+    // Check if timestamp is a Firebase Timestamp object
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return new Date(timestamp.toDate()).toLocaleString();
+    }
+    
+    // Handle if it's a Date object
+    if (timestamp instanceof Date) {
+      return timestamp.toLocaleString();
+    }
+    
+    // Handle if it's a number (timestamp in milliseconds)
+    if (typeof timestamp === 'number') {
+      return new Date(timestamp).toLocaleString();
+    }
+    
+    // If it's already a string, return it
+    if (typeof timestamp === 'string') {
+      return timestamp;
+    }
+    
+    return "Invalid date";
+  };
+
   const handleStatusChange = async (complaintId: string, newStatus: 'pending' | 'in-progress' | 'resolved') => {
     try {
       const complaintRef = doc(db, "complaints", complaintId);
@@ -345,7 +372,7 @@ const AdminComplaints = () => {
                     <div>
                       <CardTitle>{complaint.title}</CardTitle>
                       <CardDescription>
-                        {new Date(complaint.createdAt?.toDate()).toLocaleString()}
+                        {formatDate(complaint.createdAt)}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
