@@ -17,11 +17,18 @@ import StudentFees from "./pages/student/StudentFees";
 import StudentComplaints from "./pages/student/StudentComplaints";
 import StudentProfile from "./pages/student/StudentProfile";
 import StudentSecurity from "./pages/student/StudentSecurity";
+import StudentNotifications from "./pages/student/StudentNotifications";
+import StudentHelp from "./pages/student/StudentHelp";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminRooms from "./pages/admin/AdminRooms";
 import AdminStudents from "./pages/admin/AdminStudents";
+import AdminFees from "./pages/admin/AdminFees";
+import AdminComplaints from "./pages/admin/AdminComplaints";
+import AdminProfile from "./pages/admin/AdminProfile";
+import AdminSecurity from "./pages/admin/AdminSecurity";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 
 // Other Pages
 import NotFound from "./pages/NotFound";
@@ -92,6 +99,22 @@ const App = () => (
                 </PrivateRoute>
               } 
             />
+            <Route 
+              path="/student/notifications" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <StudentNotifications />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/student/help" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <StudentHelp />
+                </PrivateRoute>
+              } 
+            />
             
             {/* Admin Routes */}
             <Route 
@@ -115,6 +138,46 @@ const App = () => (
               element={
                 <PrivateRoute requiredRole="admin">
                   <AdminStudents />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/fees" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminFees />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/complaints" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminComplaints />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/profile" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminProfile />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/security" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminSecurity />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/notifications" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminNotifications />
                 </PrivateRoute>
               } 
             />
