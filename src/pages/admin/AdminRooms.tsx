@@ -1,15 +1,16 @@
 
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layouts/AdminLayout";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { PlusIcon, Users, Pencil, Trash } from "lucide-react";
+import { PlusIcon, Users, Pencil, Trash, Eye } from "lucide-react";
 import {
   collection,
   addDoc,
@@ -30,10 +31,12 @@ interface Room {
   id: string;
   number: string;
   floor: string;
+  block: string; // Added block field
   type: string;
   capacity: number;
   status: string;
   occupants?: any[];
+  amenities?: string;
 }
 
 const AdminRooms = () => {
@@ -43,14 +46,20 @@ const AdminRooms = () => {
   const [openMembersDialog, setOpenMembersDialog] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [roomMembers, setRoomMembers] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
   
   // New room form state
   const [formData, setFormData] = useState({
     number: "",
     floor: "",
+    block: "", // Added block field
     type: "single",
     capacity: 1,
-    status: "available"
+    status: "available",
+    amenities: "" // Added amenities field
   });
   
   // Edit mode state
@@ -117,9 +126,11 @@ const AdminRooms = () => {
     setFormData({
       number: "",
       floor: "",
+      block: "",
       type: "single",
       capacity: 1,
-      status: "available"
+      status: "available",
+      amenities: ""
     });
     setIsEditing(false);
     setCurrentRoom(null);
@@ -130,9 +141,11 @@ const AdminRooms = () => {
     setFormData({
       number: room.number,
       floor: room.floor,
+      block: room.block || "",
       type: room.type,
       capacity: room.capacity,
-      status: room.status
+      status: room.status,
+      amenities: room.amenities || ""
     });
     setIsEditing(true);
     setOpenDialog(true);
@@ -248,6 +261,21 @@ const AdminRooms = () => {
     }
   };
 
+  // Filter rooms based on search term, status filter, type filter, and active tab
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          room.floor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (room.block && room.block.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === "all" || room.status === statusFilter;
+    const matchesType = typeFilter === "all" || room.type === typeFilter;
+    const matchesTab = activeTab === "all" || 
+                      (activeTab === "occupied" && room.status === "occupied") || 
+                      (activeTab === "available" && room.status === "available");
+    
+    return matchesSearch && matchesStatus && matchesType && matchesTab;
+  });
+
   if (loading) {
     return (
       <AdminLayout>
@@ -263,265 +291,305 @@ const AdminRooms = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Room Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Room Management</h1>
             <p className="text-muted-foreground">
-              Manage hostel rooms and their allocations
+              Manage hostel rooms and assignments
             </p>
           </div>
-          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-            <DialogTrigger asChild>
-              <Button className="mt-4 sm:mt-0" onClick={() => resetForm()}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Room
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{isEditing ? "Edit Room" : "Add New Room"}</DialogTitle>
-                <DialogDescription>
-                  {isEditing
-                    ? "Update the room details below"
-                    : "Enter the details for the new room"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="number">Room Number</Label>
-                      <Input
-                        id="number"
-                        name="number"
-                        value={formData.number}
-                        onChange={handleInputChange}
-                        required
-                      />
+          <div className="flex space-x-2 mt-4 sm:mt-0">
+            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center" onClick={() => resetForm()}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add Room
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{isEditing ? "Edit Room" : "Add New Room"}</DialogTitle>
+                  <DialogDescription>
+                    {isEditing
+                      ? "Update the room details below"
+                      : "Enter the details for the new room"}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="number">Room Number</Label>
+                        <Input
+                          id="number"
+                          name="number"
+                          value={formData.number}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="block">Block</Label>
+                        <Input
+                          id="block"
+                          name="block"
+                          value={formData.block}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="floor">Floor</Label>
+                        <Input
+                          id="floor"
+                          name="floor"
+                          value={formData.floor}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Room Type</Label>
+                        <Select
+                          value={formData.type}
+                          onValueChange={(value) => handleSelectChange("type", value)}
+                        >
+                          <SelectTrigger id="type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="double">Double</SelectItem>
+                            <SelectItem value="triple">Triple</SelectItem>
+                            <SelectItem value="quad">Quad</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="capacity">Capacity</Label>
+                        <Input
+                          id="capacity"
+                          name="capacity"
+                          type="number"
+                          min="1"
+                          max="6"
+                          value={formData.capacity}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => handleSelectChange("status", value)}
+                        >
+                          <SelectTrigger id="status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="available">Available</SelectItem>
+                            <SelectItem value="occupied">Occupied</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                            <SelectItem value="reserved">Reserved</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="floor">Floor</Label>
+                      <Label htmlFor="amenities">Amenities</Label>
                       <Input
-                        id="floor"
-                        name="floor"
-                        value={formData.floor}
+                        id="amenities"
+                        name="amenities"
+                        value={formData.amenities}
                         onChange={handleInputChange}
-                        required
+                        placeholder="e.g., AC, Attached Bathroom, TV"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Room Type</Label>
-                      <Select
-                        value={formData.type}
-                        onValueChange={(value) => handleSelectChange("type", value)}
-                      >
-                        <SelectTrigger id="type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="double">Double</SelectItem>
-                          <SelectItem value="triple">Triple</SelectItem>
-                          <SelectItem value="quad">Quad</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="capacity">Capacity</Label>
-                      <Input
-                        id="capacity"
-                        name="capacity"
-                        type="number"
-                        min="1"
-                        max="6"
-                        value={formData.capacity}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) => handleSelectChange("status", value)}
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => {
+                        setOpenDialog(false);
+                        resetForm();
+                      }}
                     >
-                      <SelectTrigger id="status">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Available</SelectItem>
-                        <SelectItem value="occupied">Occupied</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="reserved">Reserved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => {
-                      setOpenDialog(false);
-                      resetForm();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting
-                      ? "Saving..."
-                      : isEditing
-                      ? "Update Room"
-                      : "Add Room"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting
+                        ? "Saving..."
+                        : isEditing
+                        ? "Update Room"
+                        : "Add Room"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" className="flex items-center">
+              <Users className="mr-2 h-4 w-4" />
+              Bulk Room Assignment
+            </Button>
+          </div>
         </div>
 
-        {/* Room Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{rooms.length}</div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="all">All Rooms</TabsTrigger>
+            <TabsTrigger value="occupied">Occupied Rooms</TabsTrigger>
+            <TabsTrigger value="available">Available Rooms</TabsTrigger>
+          </TabsList>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Available</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {rooms.filter(room => room.status === "available").length}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Occupied</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {rooms.filter(room => room.status === "occupied").length}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-600">
-                {rooms.filter(room => room.status === "maintenance").length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="md:w-1/3">
+              <Select 
+                value={statusFilter} 
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="reserved">Reserved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="md:w-1/3">
+              <Select 
+                value={typeFilter} 
+                onValueChange={setTypeFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="single">Single</SelectItem>
+                  <SelectItem value="double">Double</SelectItem>
+                  <SelectItem value="triple">Triple</SelectItem>
+                  <SelectItem value="quad">Quad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="md:w-1/3">
+              <Input
+                placeholder="Search rooms..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
 
-        {/* Rooms Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Rooms</CardTitle>
-            <CardDescription>
-              Manage and view all rooms in the hostel
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {rooms.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Room No.</TableHead>
-                      <TableHead>Floor</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Capacity</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Occupants</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rooms.map((room) => (
-                      <TableRow key={room.id}>
-                        <TableCell className="font-medium">{room.number}</TableCell>
-                        <TableCell>{room.floor}</TableCell>
-                        <TableCell className="capitalize">{room.type}</TableCell>
-                        <TableCell>{room.capacity}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              room.status === "available"
-                                ? "bg-green-50 text-green-600 border-green-200"
-                                : room.status === "occupied"
-                                ? "bg-blue-50 text-blue-600 border-blue-200"
-                                : room.status === "maintenance"
-                                ? "bg-amber-50 text-amber-600 border-amber-200"
-                                : "bg-purple-50 text-purple-600 border-purple-200"
-                            }
-                          >
-                            {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {room.occupants && room.occupants.length > 0 ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="flex items-center"
-                              onClick={() => viewRoomMembers(room)}
-                            >
-                              <Users className="h-4 w-4 mr-1" />
-                              {room.occupants.length}
-                            </Button>
-                          ) : (
-                            "0"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(room)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500"
-                              onClick={() => handleDeleteRoom(room.id)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+          <TabsContent value="all" className="mt-0">
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Room No.</TableHead>
+                        <TableHead>Block</TableHead>
+                        <TableHead>Floor</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Capacity</TableHead>
+                        <TableHead>Occupied</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Amenities</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p>No rooms found</p>
-                <p className="text-muted-foreground mt-1">
-                  Click "Add Room" to create your first room
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRooms.length > 0 ? (
+                        filteredRooms.map((room) => (
+                          <TableRow key={room.id}>
+                            <TableCell className="font-medium">{room.number}</TableCell>
+                            <TableCell>{room.block || "-"}</TableCell>
+                            <TableCell>{room.floor}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                                {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{room.capacity}</TableCell>
+                            <TableCell>{room.occupants ? room.occupants.length : 0}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  room.status === "available"
+                                    ? "bg-green-50 text-green-600 border-green-200"
+                                    : room.status === "occupied"
+                                    ? "bg-blue-50 text-blue-600 border-blue-200"
+                                    : room.status === "maintenance"
+                                    ? "bg-amber-50 text-amber-600 border-amber-200"
+                                    : "bg-purple-50 text-purple-600 border-purple-200"
+                                }
+                              >
+                                {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{room.amenities || "None"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => viewRoomMembers(room)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(room)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-500"
+                                  onClick={() => handleDeleteRoom(room.id)}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-6">
+                            No rooms found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="occupied" className="mt-0">
+            {/* Content is handled by filtering */}
+          </TabsContent>
+          
+          <TabsContent value="available" className="mt-0">
+            {/* Content is handled by filtering */}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Room Members Dialog */}
