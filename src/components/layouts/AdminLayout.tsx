@@ -69,7 +69,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "Students", href: "/admin/students", icon: Users },
     { name: "Fees", href: "/admin/fees", icon: FileText },
     { name: "Complaints", href: "/admin/complaints", icon: MessageSquare },
-    { name: "Admins", href: "/admin/admins", icon: UserCog },
     { name: "Security", href: "/admin/security", icon: ShieldAlert },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ];

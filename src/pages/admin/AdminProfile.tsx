@@ -1,244 +1,206 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { EditIcon, UserIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+
+interface AdminProfileData {
+  displayName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  position: string;
+}
 
 const AdminProfile = () => {
   const { currentUser, updateUserProfile } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState<AdminProfileData>({
     displayName: currentUser?.displayName || "",
     email: currentUser?.email || "",
-    bloodGroup: currentUser?.bloodGroup || "",
-    age: currentUser?.age || "",
-    gender: currentUser?.gender || "",
     phoneNumber: currentUser?.phoneNumber || "",
-    address: currentUser?.address || "",
-    department: currentUser?.department || "",
+    role: currentUser?.role || "admin",
+    position: currentUser?.position || "System Administrator"
   });
 
-  useEffect(() => {
-    if (currentUser) {
-      setFormData({
-        displayName: currentUser.displayName || "",
-        email: currentUser.email || "",
-        bloodGroup: currentUser.bloodGroup || "",
-        age: currentUser.age ? currentUser.age.toString() : "",
-        gender: currentUser.gender || "",
-        phoneNumber: currentUser.phoneNumber || "",
-        address: currentUser.address || "",
-        department: currentUser.department || "",
-      });
-    }
-  }, [currentUser]);
+  const handleProfileUpdate = async () => {
+    if (!currentUser) return;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
     try {
+      // Update in Firebase Auth (name only)
       await updateUserProfile({
-        displayName: formData.displayName,
-        bloodGroup: formData.bloodGroup,
-        age: formData.age ? parseInt(formData.age) : undefined,
-        gender: formData.gender,
-        phoneNumber: formData.phoneNumber,
-        address: formData.address,
-        department: formData.department,
+        displayName: profileData.displayName,
       });
-      
+
+      // Update in Firestore (all fields)
+      const userRef = doc(db, "users", currentUser.uid);
+      await updateDoc(userRef, {
+        displayName: profileData.displayName,
+        phoneNumber: profileData.phoneNumber,
+        position: profileData.position
+      });
+
+      setIsEditing(false);
       toast.success("Profile updated successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
     }
   };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
-          <p className="text-muted-foreground">Manage your personal information and contact details</p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Admin Profile</h1>
 
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader className="relative">
-              <div className="flex items-center space-x-4">
-                <Avatar className="h-20 w-20">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Personal Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex flex-col items-center space-y-4">
+                <Avatar className="h-32 w-32">
                   <AvatarImage src="" />
-                  <AvatarFallback className="text-2xl">
+                  <AvatarFallback className="text-4xl">
                     {currentUser?.displayName?.charAt(0) || 'A'}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <CardTitle>{currentUser?.displayName || "Admin User"}</CardTitle>
-                  <CardDescription className="flex items-center mt-1">
-                    {currentUser?.email}
-                  </CardDescription>
-                  <Badge className="mt-2">Administrator</Badge>
-                </div>
+                {!isEditing && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Edit Profile
+                  </Button>
+                )}
               </div>
-            </CardHeader>
-          </Card>
 
-          <form onSubmit={handleSubmit}>
+              <div className="flex-1 space-y-4">
+                {isEditing ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="displayName">Full Name</Label>
+                        <Input
+                          id="displayName"
+                          value={profileData.displayName}
+                          onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          value={profileData.email}
+                          disabled
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Input
+                          id="phoneNumber"
+                          value={profileData.phoneNumber}
+                          onChange={(e) => setProfileData({...profileData, phoneNumber: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="position">Position</Label>
+                        <Input
+                          id="position"
+                          value={profileData.position}
+                          onChange={(e) => setProfileData({...profileData, position: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end mt-4">
+                      <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                      <Button onClick={handleProfileUpdate}>Save Changes</Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Full Name</p>
+                        <p>{currentUser?.displayName || "Not set"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Email Address</p>
+                        <p>{currentUser?.email || "Not set"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Phone Number</p>
+                        <p>{currentUser?.phoneNumber || "Not set"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Position</p>
+                        <p>{currentUser?.position || "System Administrator"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Role</p>
+                        <p className="capitalize">{currentUser?.role || "Admin"}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="security">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          </TabsList>
+          <TabsContent value="security" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <UserIcon className="mr-2 h-5 w-5" />
-                  <span>Personal Information</span>
-                </CardTitle>
-                <CardDescription>
-                  Update your personal information and contact details
-                </CardDescription>
+                <CardTitle>Security Settings</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Full Name</Label>
-                    <Input
-                      id="displayName"
-                      name="displayName"
-                      value={formData.displayName}
-                      onChange={handleChange}
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      disabled
-                      readOnly
-                      className="bg-gray-100"
-                    />
-                  </div>
+              <CardContent className="space-y-4">
+                <div>
+                  <Button variant="outline">Change Password</Button>
                 </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="bloodGroup">Blood Group</Label>
-                    <select
-                      id="bloodGroup"
-                      name="bloodGroup"
-                      className="w-full rounded-md border border-gray-300 p-2"
-                      value={formData.bloodGroup}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select Blood Group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="age">Age</Label>
-                    <Input
-                      id="age"
-                      name="age"
-                      type="number"
-                      min="18"
-                      max="100"
-                      value={formData.age}
-                      onChange={handleChange}
-                      placeholder="Your age"
-                    />
-                  </div>
+                <Separator />
+                <div>
+                  <h3 className="font-medium mb-2">Two-Factor Authentication</h3>
+                  <Button variant="outline">Setup 2FA</Button>
                 </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <select
-                      id="gender"
-                      name="gender"
-                      className="w-full rounded-md border border-gray-300 p-2"
-                      value={formData.gender}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                      <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      placeholder="Your phone number"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      placeholder="Your department"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    className="w-full rounded-md border border-gray-300 p-2 min-h-[100px]"
-                    value={formData.address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="Your address"
-                  />
-                </div>
-                
-                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                  {loading ? "Updating..." : "Update Profile"}
-                </Button>
               </CardContent>
             </Card>
-          </form>
-        </div>
+          </TabsContent>
+          <TabsContent value="preferences" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notification Preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>Manage your notification settings and preferences.</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="email-notifications">Email Notifications</Label>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="app-notifications">In-App Notifications</Label>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );

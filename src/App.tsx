@@ -29,6 +29,7 @@ import AdminComplaints from "./pages/admin/AdminComplaints";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSecurity from "./pages/admin/AdminSecurity";
 import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 // Other Pages
 import NotFound from "./pages/NotFound";
@@ -178,6 +179,14 @@ const App = () => (
               element={
                 <PrivateRoute requiredRole="admin">
                   <AdminNotifications />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/settings" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminSettings />
                 </PrivateRoute>
               } 
             />
