@@ -40,7 +40,7 @@ const Login = () => {
           <div className="flex justify-center mb-4">
             <BuildingIcon className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">AI Hostel Connect</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Hostel Connect</h1>
           <p className="text-gray-600">Smart Hostel Management System</p>
         </div>
 
